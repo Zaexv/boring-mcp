@@ -16,7 +16,10 @@ def create_server() -> FastMCP:
     """Create and configure the Boring MCP server."""
     mcp = FastMCP(
         "Boring MCP",
-        description=("Agent behavioral guidance via vector similarity search."),
+        instructions=(
+            "Agent behavioral guidance via vector similarity search. "
+            "Call the `boring` tool before every other tool call."
+        ),
     )
 
     # Configuration
