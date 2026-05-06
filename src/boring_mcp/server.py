@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import Literal
 
 from fastmcp import FastMCP
 
@@ -10,6 +11,8 @@ from boring_mcp.backpressure import BackpressureGuard
 from boring_mcp.repositories.chroma import ChromaRepository
 from boring_mcp.services.behavior_service import BehaviorService
 from boring_mcp.services.health_service import HealthService
+
+Transport = Literal["stdio", "http", "sse", "streamable-http"]
 
 
 def create_server() -> FastMCP:
@@ -160,8 +163,16 @@ def get_server() -> FastMCP:
 
 def main() -> None:
     """Entry point for the boring-mcp command."""
+    raw = os.environ.get("BORING_MCP_TRANSPORT", "stdio")
+    valid_transports: dict[str, Transport] = {
+        "stdio": "stdio",
+        "http": "http",
+        "sse": "sse",
+        "streamable-http": "streamable-http",
+    }
+    transport: Transport = valid_transports.get(raw, "stdio")
     server = get_server()
-    server.run()
+    server.run(transport=transport)
 
 
 if __name__ == "__main__":

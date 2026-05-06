@@ -41,7 +41,7 @@ class ChromaRepository:
         if count > 0:
             effective_n = min(n_results, count)
             results = col.query(query_texts=[text], n_results=effective_n)
-            output = self._map_results(results)
+            output = self._map_results(results)  # type: ignore[arg-type]
         return output
 
     def delete(self, doc_id: str, collection: str) -> bool:
@@ -74,7 +74,9 @@ class ChromaRepository:
                     QueryResult(
                         id=doc_id,
                         document=doc or "",
-                        metadata=dict(meta) if meta else {},
+                        metadata={str(k): str(v) for k, v in meta.items()}
+                        if meta
+                        else {},
                         distance=0.0,
                     )
                 )
