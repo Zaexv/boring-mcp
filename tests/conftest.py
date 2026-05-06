@@ -14,8 +14,11 @@ from boring_mcp.services.health_service import HealthService
 def chroma_client() -> Generator[chromadb.ClientAPI, None, None]:
     """In-memory ChromaDB client for fast, isolated tests."""
     client = chromadb.EphemeralClient()
+    # Pre-cleanup: ensure no leaked state from other tests
+    for col in client.list_collections():
+        client.delete_collection(col.name)
     yield client
-    # Teardown: delete all collections to ensure isolation
+    # Post-cleanup
     for col in client.list_collections():
         client.delete_collection(col.name)
 

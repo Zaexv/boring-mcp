@@ -19,7 +19,7 @@ class ChromaRepository:
         elif persist_path:
             self._client = chromadb.PersistentClient(path=persist_path)
         else:
-            self._client = chromadb.Client()
+            self._client = chromadb.EphemeralClient()
 
     def add(
         self, document: str, collection: str, metadata: dict[str, str], doc_id: str
