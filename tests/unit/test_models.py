@@ -1,14 +1,8 @@
 """Unit tests for domain models."""
 
 import pytest
-from pydantic import ValidationError
 
 from boring_mcp.models.behavior import Behavior
-from boring_mcp.models.requests import (
-    DeleteBehaviorRequest,
-    QueryBehaviorsRequest,
-    StoreBehaviorRequest,
-)
 from boring_mcp.models.results import QueryResult
 
 
@@ -48,44 +42,3 @@ class TestQueryResult:
         assert r.id == "a"
         assert r.document == "hello"
         assert r.distance == 0.5
-
-
-class TestStoreBehaviorRequest:
-    """Tests for store request validation."""
-
-    def test_valid(self) -> None:
-        req = StoreBehaviorRequest(sentence="Be helpful", collection="tone")
-        assert req.sentence == "Be helpful"
-        assert req.metadata == {}
-
-    def test_empty_sentence_rejected(self) -> None:
-        with pytest.raises(ValidationError):
-            StoreBehaviorRequest(sentence="", collection="tone")
-
-    def test_empty_collection_rejected(self) -> None:
-        with pytest.raises(ValidationError):
-            StoreBehaviorRequest(sentence="Ok", collection="")
-
-
-class TestQueryBehaviorsRequest:
-    """Tests for query request validation."""
-
-    def test_defaults(self) -> None:
-        req = QueryBehaviorsRequest(query="angry user")
-        assert req.top_k == 5
-        assert req.collection is None
-
-    def test_top_k_bounds(self) -> None:
-        with pytest.raises(ValidationError):
-            QueryBehaviorsRequest(query="x", top_k=0)
-
-        with pytest.raises(ValidationError):
-            QueryBehaviorsRequest(query="x", top_k=51)
-
-
-class TestDeleteBehaviorRequest:
-    """Tests for delete request validation."""
-
-    def test_valid(self) -> None:
-        req = DeleteBehaviorRequest(id="abc-123")
-        assert req.id == "abc-123"

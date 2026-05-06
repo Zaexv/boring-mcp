@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from boring_mcp.exceptions import StorageError
 from boring_mcp.repositories.base import BehaviorRepository
 
 
@@ -33,7 +34,7 @@ class HealthService:
                 collections_count=len(collections),
                 message="All systems operational",
             )
-        except Exception as e:
+        except (StorageError, OSError, RuntimeError) as e:
             status = HealthStatus(
                 healthy=False,
                 chromadb_connected=False,

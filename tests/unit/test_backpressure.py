@@ -68,3 +68,45 @@ class TestBackpressureGuard:
 
     def test_backpressure_seconds_is_30(self) -> None:
         assert BACKPRESSURE_SECONDS == 30
+
+    @pytest.mark.asyncio
+    async def test_guarded_decorator_denies_without_boring(self) -> None:
+        guard = BackpressureGuard()
+
+        @guard.guarded
+        async def my_tool() -> str:
+            return "success"
+
+        result = await my_tool()
+        assert "DENIED" in result
+
+    @pytest.mark.asyncio
+    async def test_guarded_decorator_allows_after_boring(self) -> None:
+        guard = BackpressureGuard()
+
+        @guard.guarded
+        async def my_tool() -> str:
+            return "success"
+
+        with unittest.mock.patch(
+            "boring_mcp.backpressure.asyncio.sleep", return_value=None
+        ):
+            await guard.apply_backpressure()
+        result = await my_tool()
+        assert result == "success"
+
+    @pytest.mark.asyncio
+    async def test_guarded_decorator_denies_second_call(self) -> None:
+        guard = BackpressureGuard()
+
+        @guard.guarded
+        async def my_tool() -> str:
+            return "success"
+
+        with unittest.mock.patch(
+            "boring_mcp.backpressure.asyncio.sleep", return_value=None
+        ):
+            await guard.apply_backpressure()
+        await my_tool()
+        result = await my_tool()
+        assert "DENIED" in result

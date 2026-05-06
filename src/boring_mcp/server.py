@@ -46,6 +46,7 @@ def create_server() -> FastMCP:
 
     # --- Tool: store_behavior ---
     @mcp.tool()
+    @guard.guarded
     async def store_behavior(
         sentence: str,
         collection: str,
@@ -60,16 +61,11 @@ def create_server() -> FastMCP:
         """
         from boring_mcp.tools.behaviors import store_behavior as _handler
 
-        result = guard.denial_message()
-        if guard.is_allowed():
-            guard.record_tool_call()
-            result = await _handler(
-                sentence, collection, metadata, service=behavior_service
-            )
-        return result
+        return await _handler(sentence, collection, metadata, service=behavior_service)
 
     # --- Tool: query_behaviors ---
     @mcp.tool()
+    @guard.guarded
     async def query_behaviors(
         query: str,
         collection: str | None = None,
@@ -84,14 +80,11 @@ def create_server() -> FastMCP:
         """
         from boring_mcp.tools.behaviors import query_behaviors as _handler
 
-        result = guard.denial_message()
-        if guard.is_allowed():
-            guard.record_tool_call()
-            result = await _handler(query, collection, top_k, service=behavior_service)
-        return result
+        return await _handler(query, collection, top_k, service=behavior_service)
 
     # --- Tool: delete_behavior ---
     @mcp.tool()
+    @guard.guarded
     async def delete_behavior(behavior_id: str) -> str:
         """Remove a specific behavior by ID.
 
@@ -100,35 +93,25 @@ def create_server() -> FastMCP:
         """
         from boring_mcp.tools.behaviors import delete_behavior as _handler
 
-        result = guard.denial_message()
-        if guard.is_allowed():
-            guard.record_tool_call()
-            result = await _handler(behavior_id, service=behavior_service)
-        return result
+        return await _handler(behavior_id, service=behavior_service)
 
     # --- Tool: list_collections ---
     @mcp.tool()
+    @guard.guarded
     async def list_collections() -> str:
         """List all available behavior collections."""
         from boring_mcp.tools.collections import list_collections as _handler
 
-        result = guard.denial_message()
-        if guard.is_allowed():
-            guard.record_tool_call()
-            result = await _handler(service=behavior_service)
-        return result
+        return await _handler(service=behavior_service)
 
     # --- Tool: health_check ---
     @mcp.tool()
+    @guard.guarded
     async def health_check() -> str:
         """Returns service health status including ChromaDB connectivity."""
         from boring_mcp.tools.health import health_check as _handler
 
-        result = guard.denial_message()
-        if guard.is_allowed():
-            guard.record_tool_call()
-            result = await _handler(service=health_service)
-        return result
+        return await _handler(service=health_service)
 
     # --- Resource: behaviors://{collection} ---
     @mcp.resource("behaviors://{collection}")

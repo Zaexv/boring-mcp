@@ -4,19 +4,9 @@ from __future__ import annotations
 
 import json
 
-from boring_mcp.models.behavior import Behavior
+from boring_mcp.serializers import behavior_to_dict
 from boring_mcp.services.behavior_service import BehaviorService
-
-
-def _behavior_to_dict(behavior: Behavior) -> dict[str, object]:
-    """Serialize a Behavior to a JSON-safe dict."""
-    return {
-        "id": behavior.id,
-        "sentence": behavior.sentence,
-        "collection": behavior.collection,
-        "metadata": behavior.metadata,
-        "distance": behavior.distance,
-    }
+from boring_mcp.validation import validate_collection, validate_sentence, validate_top_k
 
 
 async def store_behavior(
@@ -27,7 +17,11 @@ async def store_behavior(
     service: BehaviorService,
 ) -> str:
     """Store a new behavioral sentence in a collection."""
-    doc_id = service.store(sentence=sentence, collection=collection, metadata=metadata)
+    clean_sentence = validate_sentence(sentence)
+    clean_collection = validate_collection(collection)
+    doc_id = service.store(
+        sentence=clean_sentence, collection=clean_collection, metadata=metadata
+    )
     return json.dumps({"id": doc_id, "status": "stored"})
 
 
@@ -35,8 +29,13 @@ async def query_behaviors(
     query: str, collection: str | None, top_k: int, *, service: BehaviorService
 ) -> str:
     """Retrieve the most relevant behaviors for a given context."""
-    behaviors = service.query(query_text=query, collection=collection, top_k=top_k)
-    results = [_behavior_to_dict(b) for b in behaviors]
+    clean_query = validate_sentence(query)
+    safe_top_k = validate_top_k(top_k)
+    clean_collection = validate_collection(collection) if collection else None
+    behaviors = service.query(
+        query_text=clean_query, collection=clean_collection, top_k=safe_top_k
+    )
+    results = [behavior_to_dict(b, include_distance=True) for b in behaviors]
     return json.dumps({"results": results, "count": len(results)})
 
 

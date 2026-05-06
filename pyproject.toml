@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "fastmcp>=2.0.0",
     "chromadb>=0.5.0",
-    "pydantic>=2.0.0",
+    "pyyaml>=6.0",
 ]
 
 [project.scripts]
@@ -57,4 +57,5 @@ dev = [
     "pytest-asyncio>=0.23.0",
     "mypy>=1.10.0",
     "ruff>=0.4.0",
+    "types-PyYAML>=6.0",
 ]
