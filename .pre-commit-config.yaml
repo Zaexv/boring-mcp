@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: single-exit-point
+        name: Single-Exit-Point Lint
+        entry: python scripts/lint_single_return.py
+        language: system
+        files: ^src/.*\.py$
+        pass_filenames: false
+
+      - id: mypy
+        name: MyPy Strict
+        entry: uv run mypy
+        language: system
+        files: ^src/.*\.py$
+        pass_filenames: false
