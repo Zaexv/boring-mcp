@@ -4,7 +4,7 @@
 
 Boring MCP is a **Model Context Protocol** server built with **FastMCP** (Python),
 backed by a local **ChromaDB** vector database. It follows **SOLID principles** and
-**Clean Architecture** with strict typing (MyPy strict), 98%+ test coverage, and
+**Clean Architecture** with strict typing (MyPy strict), 99%+ test coverage, and
 server-enforced backpressure.
 
 ---
@@ -269,7 +269,16 @@ boring-mcp/
 ├── ai-docs/                    # Agent-facing documentation
 │   ├── agents.md               # Integration guide & backpressure rules
 │   ├── architecture.md         # This file
-│   └── backpressure.md         # All 8 backpressure techniques explained
+│   ├── backpressure.md         # All 8 backpressure techniques explained
+│   ├── state.md                # Current project health & metrics
+│   └── skill-extend-mcp.md    # Step-by-step extension guide
+│
+├── .agents/skills/             # AI agent skills (Copilot CLI format)
+│   └── extend-boring-mcp/     # Skill for extending the MCP server
+│       └── SKILL.md
+│
+├── plans/
+│   └── roadmap.md              # Feature roadmap (6 phases)
 │
 ├── src/boring_mcp/
 │   ├── __init__.py
@@ -325,7 +334,7 @@ boring-mcp/
 | Validation | Custom `validation.py` | Zero dependencies, single-exit-point compliant |
 | Serialization | `serializers.py` | DRY: one serializer, shared across layers |
 | Logging | Python `logging` | Structured, configurable via env var |
-| Testing | pytest + pytest-cov | 98%+ coverage, 3-tier test structure |
+| Testing | pytest + pytest-cov | 99%+ coverage, 3-tier test structure |
 | Linting | Ruff + custom AST | Fast, comprehensive, single-exit-point |
 | Package Manager | uv | Fast, lockfile-based, reproducible |
 | CI/CD | GitHub Actions | lint → test → typecheck pipeline |

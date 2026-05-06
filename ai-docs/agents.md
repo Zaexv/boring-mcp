@@ -6,6 +6,12 @@ All AI-facing documentation lives in the **`ai-docs/`** folder at the repository
 When searching for architectural guidance, behavioral contracts, or tool schemas,
 always look in `ai-docs/`.
 
+**Related docs:**
+- `ai-docs/architecture.md` — SOLID architecture, layer diagrams, data flows
+- `ai-docs/backpressure.md` — All 8 backpressure techniques explained
+- `ai-docs/state.md` — Current project health and metrics
+- `ai-docs/skill-extend-mcp.md` — Step-by-step guide to extend the server
+
 ---
 
 ## Philosophy
@@ -34,8 +40,14 @@ operates at a pace compatible with careful, predictable engineering.
 3. Repeat from step 1 for the next action
 ```
 
-Agents that skip the `boring` call are violating the protocol. The MCP server may
-reject subsequent calls if backpressure is not respected.
+Agents that skip the `boring` call will receive a denial message:
+
+```
+⛔ DENIED: You must call the `boring` tool before every other tool call.
+This is mandatory backpressure. Call `boring` first, then retry.
+```
+
+The server enforces this via `BackpressureGuard` — it is **impossible to bypass**.
 
 ---
 
@@ -49,6 +61,8 @@ Boring MCP exposes **tools** and **resources** that allow an AI agent to:
    semantically relevant behavioral guidance via vector similarity search.
 3. **Manage behavior collections** — organize behaviors into named collections
    (e.g., `tone`, `boundaries`, `expertise`, `persona`).
+4. **Health monitoring** — verify ChromaDB connectivity and system status.
+5. **Seed behaviors** — bulk-load behaviors from YAML files via the seed utility.
 
 ---
 
@@ -68,6 +82,10 @@ Store a new behavioral sentence in a collection.
 | `collection`| string | ✅       | Collection name (e.g., "tone", "persona")|
 | `metadata`  | object | ❌       | Optional key-value metadata              |
 
+**Validation rules:**
+- `sentence` must be non-empty after trimming whitespace
+- `collection` must be alphanumeric (with hyphens/underscores allowed)
+
 **Example:**
 ```json
 {
@@ -84,7 +102,10 @@ Retrieve the most relevant behaviors for a given context.
 |-------------|--------|----------|--------------------------------------------|
 | `query`     | string | ✅       | The context to match against               |
 | `collection`| string | ❌       | Filter by collection (all if omitted)      |
-| `top_k`     | int    | ❌       | Number of results (default: 5)             |
+| `top_k`     | int    | ❌       | Number of results (default: 5, max: 50)    |
+
+**Behavior when `collection` is omitted:** Queries all collections, merges results,
+sorts by distance, and returns the top_k closest matches.
 
 **Example:**
 ```json
@@ -97,19 +118,21 @@ Retrieve the most relevant behaviors for a given context.
 
 ### `list_collections`
 
-List all available behavior collections.
+List all available behavior collections. Returns collection names and count.
 
 ### `delete_behavior`
 
-Remove a specific behavior by ID.
+Remove a specific behavior by ID. Searches across all collections.
 
-| Parameter | Type   | Required | Description          |
-|-----------|--------|----------|----------------------|
-| `id`      | string | ✅       | The behavior's ID    |
+| Parameter     | Type   | Required | Description          |
+|--------------|--------|----------|----------------------|
+| `behavior_id`| string | ✅       | The behavior's ID    |
 
 ### `health_check`
 
 Returns service health status including ChromaDB connectivity.
+
+**Response fields:** `healthy`, `chromadb_connected`, `collections_count`, `message`
 
 ---
 
@@ -122,7 +145,7 @@ that want to load full behavioral context at startup.
 
 ### `behaviors://summary`
 
-A summary resource returning collection names and counts.
+A summary resource returning collection names and their behavior counts.
 
 ---
 
@@ -167,6 +190,23 @@ A privileged agent or human can manage behaviors:
 6. Call list_collections to audit the behavioral corpus
 ```
 
+### Pattern 4: Bulk Seeding
+
+For initial setup, use the seed utility instead of individual tool calls:
+
+```bash
+python -m boring_mcp.seed data/example_behaviors.yaml
+```
+
+This loads a YAML file of format:
+```yaml
+tone:
+  - "Always respond with empathy"
+  - "Use bullet points for lists longer than 3 items"
+boundaries:
+  - "Never share personal data"
+```
+
 ---
 
 ## Design Principles for Stored Behaviors
@@ -191,6 +231,23 @@ When writing behavioral sentences to store:
 | `persona`    | Identity, name, and character traits          |
 | `formatting` | Output structure and presentation rules       |
 | `workflow`   | Process steps and operational procedures      |
+
+---
+
+## Error Handling
+
+The server uses domain-specific exceptions (defined in `exceptions.py`):
+
+| Exception | When Raised |
+|-----------|------------|
+| `BoringMCPError` | Base exception for all Boring MCP errors |
+| `CollectionNotFoundError` | Requested collection does not exist |
+| `BehaviorNotFoundError` | Behavior ID cannot be located |
+| `StorageError` | ChromaDB storage operation fails |
+| `BackpressureViolationError` | Tool invoked without prior backpressure |
+
+Tools return JSON error responses rather than raising — the server never crashes
+on expected error conditions.
 
 ---
 
@@ -222,3 +279,26 @@ def process(data: str) -> str:
         return ""        # ❌ mid-function return
     return data.upper()
 ```
+
+### Strict Typing (MyPy Strict)
+
+All code is fully typed. No `Any`, no untyped functions, no implicit optionals.
+The project passes `mypy --strict` with zero errors.
+
+### Ruff Linting
+
+Ruff enforces: `E`, `F`, `I`, `N`, `UP`, `B`, `A`, `SIM`, `RET` rules.
+`RET504` is intentionally disabled (conflicts with single-exit-point).
+
+---
+
+## Current Project Metrics
+
+| Metric | Value |
+|--------|-------|
+| Test coverage | 99.5% |
+| Tests passing | 87 |
+| MyPy strict errors | 0 |
+| Ruff violations | 0 |
+| Python version | 3.11+ |
+| Transport options | stdio, SSE, HTTP, streamable-http |
