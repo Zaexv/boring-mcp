@@ -13,6 +13,15 @@ def _text(result) -> str:  # type: ignore[no-untyped-def]
     return result.content[0].text
 
 
+def _json(result):  # type: ignore[no-untyped-def]
+    """Parse the JSON payload from a tool result.
+
+    Scored tools (store/query) prefix a tier message line before the JSON; the
+    JSON is always the last line. Admin tools return bare JSON.
+    """
+    return json.loads(_text(result).splitlines()[-1])
+
+
 @pytest.fixture
 def server():
     """Create a server instance with in-memory ChromaDB for testing."""
@@ -33,42 +42,33 @@ class TestBoringToolE2E:
         assert "predictable" in _text(result).lower()
 
     @pytest.mark.asyncio
-    async def test_tool_denied_without_boring(self, server) -> None:
-        result = await server.call_tool(
-            "store_behavior",
-            {"sentence": "test", "collection": "tone"},
-        )
-        assert "DENIED" in _text(result)
-
-    @pytest.mark.asyncio
-    async def test_tool_allowed_after_boring(self, server) -> None:
+    async def test_store_scored_without_prior_boring(self, server) -> None:
+        # store_behavior is structure-gated: no prior boring() required.
         with unittest.mock.patch(
             "boring_mcp.backpressure.asyncio.sleep", return_value=None
         ):
-            await server.call_tool("boring", {})
             result = await server.call_tool(
                 "store_behavior",
                 {"sentence": "Be kind", "collection": "tone"},
             )
-        data = json.loads(_text(result))
+        data = _json(result)
         assert data["status"] == "stored"
 
     @pytest.mark.asyncio
-    async def test_second_tool_denied_without_boring_again(self, server) -> None:
+    async def test_repeated_stores_without_boring_all_succeed(self, server) -> None:
         with unittest.mock.patch(
             "boring_mcp.backpressure.asyncio.sleep", return_value=None
         ):
-            await server.call_tool("boring", {})
             await server.call_tool(
                 "store_behavior",
                 {"sentence": "first", "collection": "tone"},
             )
-            # Second call without boring
             result = await server.call_tool(
                 "store_behavior",
                 {"sentence": "second", "collection": "tone"},
             )
-        assert "DENIED" in _text(result)
+        data = _json(result)
+        assert data["status"] == "stored"
 
 
 class TestQueryToolE2E:
@@ -79,17 +79,15 @@ class TestQueryToolE2E:
         with unittest.mock.patch(
             "boring_mcp.backpressure.asyncio.sleep", return_value=None
         ):
-            await server.call_tool("boring", {})
             await server.call_tool(
                 "store_behavior",
                 {"sentence": "Be empathetic always", "collection": "tone"},
             )
-            await server.call_tool("boring", {})
             result = await server.call_tool(
                 "query_behaviors",
                 {"query": "empathy", "collection": "tone", "top_k": 5},
             )
-        data = json.loads(_text(result))
+        data = _json(result)
         assert data["count"] >= 1
 
 
@@ -106,7 +104,7 @@ class TestDeleteToolE2E:
                 "store_behavior",
                 {"sentence": "Temp", "collection": "temp"},
             )
-            doc_id = json.loads(_text(store_result))["id"]
+            doc_id = _json(store_result)["id"]
             await server.call_tool("boring", {})
             result = await server.call_tool("delete_behavior", {"behavior_id": doc_id})
         data = json.loads(_text(result))

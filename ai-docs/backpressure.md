@@ -34,6 +34,44 @@ await asyncio.sleep(BACKPRESSURE_SECONDS)  # 30 seconds, non-negotiable
 
 ---
 
+### 1b. Structure-Gated Backpressure (Adaptive Sleep)
+
+**What:** For the text-bearing tools (`store_behavior`, `query_behaviors`), the
+backpressure duration is no longer fixed at 30s — it scales inversely with how
+**structured** the caller's input is. Lazy, vague input gets the full boring
+pause; precise, conditional, well-engineered input is applied directly with no
+sleep. These two tools no longer require a prior `boring` call — the scored sleep
+*is* their backpressure. Admin tools (`delete_behavior`, `list_collections`,
+`health_check`) keep the mandatory `boring` gate from section 1/2.
+
+**Implementation:**
+- `src/boring_mcp/scoring/scorer.py` → `StructureScorer.score()`
+- `src/boring_mcp/scoring/rubric.py` → deterministic fallback scorer
+- `src/boring_mcp/scoring/tiers.py` → score → tier → duration/message
+- `src/boring_mcp/backpressure.py` → `BackpressureGuard.scored_backpressure()`
+
+**Scoring:** the input is judged 0–100 by the **client's own LLM** via MCP
+sampling (`ctx.sample()`) — local, no separate API key or cost. When sampling is
+unavailable, errors, or is disabled, a **pure deterministic rubric** scores the
+input instead, keeping behaviour predictable.
+
+**Tiers (defaults, env-overridable):**
+
+| Tier | Score | Sleep | Response |
+|------|-------|-------|----------|
+| lazy | `< 40` | 30s | standard boring message |
+| partial | `40–79` | 10s | "Partially structured — brief pause." |
+| excellent | `>= 80` | 0s | "Thanks for being so structured — applying changes directly." |
+
+**Why:**
+- Rewards good prompt engineering with speed; taxes lazy input with friction
+- Keeps backpressure as the default — the bypass must be *earned* by structure
+- Sampling uses the caller's own model, so judgement is local and free
+- The deterministic rubric fallback preserves the predictability rule; set
+  `BORING_MCP_SAMPLING=off` to force fully deterministic scoring
+
+---
+
 ### 2. Server-Side Enforcement (`BackpressureGuard`)
 
 **What:** The server tracks whether `boring` was called before each tool. If not,
