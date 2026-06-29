@@ -59,11 +59,13 @@ async def test_partial_input_partial_sleep(captured_sleep):
     assert captured_sleep == [10]
 
 
-async def test_scored_backpressure_marks_allowed(captured_sleep):
+async def test_scored_backpressure_does_not_unlock_admin_gate(captured_sleep):
+    # A scored call is self-contained: it must NOT satisfy the boring() gate
+    # that admin tools (delete/list/health) still enforce.
     guard = BackpressureGuard()
 
     async def sampler(_p: str) -> str:
         return "95"
 
     await guard.scored_backpressure("when X do Y", _scorer(), sampler)
-    assert guard.is_allowed() is True
+    assert guard.is_allowed() is False

@@ -64,6 +64,20 @@ async def test_store_works_without_prior_boring(server) -> None:
 
 
 @pytest.mark.asyncio
+async def test_scored_store_does_not_unlock_admin_tools(server) -> None:
+    # A scored store must not satisfy the boring() gate for admin tools.
+    with unittest.mock.patch(
+        "boring_mcp.backpressure.asyncio.sleep", return_value=None
+    ):
+        await server.call_tool(
+            "store_behavior",
+            {"sentence": "be nice", "collection": "tone"},
+        )
+        result = await server.call_tool("list_collections", {})
+    assert "DENIED" in _text(result)
+
+
+@pytest.mark.asyncio
 async def test_structured_query_returns_thanks(server) -> None:
     with unittest.mock.patch(
         "boring_mcp.backpressure.asyncio.sleep", return_value=None

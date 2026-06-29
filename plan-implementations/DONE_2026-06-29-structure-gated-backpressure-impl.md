@@ -1,5 +1,17 @@
 # Structure-Gated Backpressure Implementation Plan
 
+> **STATUS: DONE** — implemented, 146 tests pass, 99% coverage, live-smoke verified.
+>
+> **Post-implementation deviation (Task 6):** the original plan had
+> `scored_backpressure` set `_last_boring_at` ("mark backpressure satisfied").
+> Live testing revealed this *leaked* — a scored store/query call then unlocked
+> the next admin tool without an explicit `boring()`. Fix: `scored_backpressure`
+> is now fully self-contained and does NOT touch the admin-gate state
+> (`_last_boring_at` / `_last_tool_at`). Regression covered by
+> `tests/unit/test_scored_backpressure.py::test_scored_backpressure_does_not_unlock_admin_gate`
+> and `tests/e2e/test_structure_gating.py::test_scored_store_does_not_unlock_admin_tools`.
+> Goldenset added at `tests/golden/`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make backpressure content-driven — the caller's input is scored 0–100 and the boring sleep shrinks as structure improves, reaching 0s for highly structured input.
