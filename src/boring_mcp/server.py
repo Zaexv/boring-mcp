@@ -5,10 +5,13 @@ from __future__ import annotations
 import os
 from typing import Literal
 
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 
 from boring_mcp.backpressure import BackpressureGuard
+from boring_mcp.config import BackpressureConfig
 from boring_mcp.repositories.chroma import ChromaRepository
+from boring_mcp.scoring.scorer import Sampler, StructureScorer
+from boring_mcp.scoring.tiers import Tiers
 from boring_mcp.services.behavior_service import BehaviorService
 from boring_mcp.services.health_service import HealthService
 
@@ -33,6 +36,15 @@ def create_server() -> FastMCP:
     behavior_service = BehaviorService(repository=repository)
     health_service = HealthService(repository=repository)
     guard = BackpressureGuard()
+    config = BackpressureConfig.from_env(os.environ)
+    scorer = StructureScorer(tiers=Tiers.from_config(config), sampling=config.sampling)
+
+    def _make_sampler(ctx: Context) -> Sampler:
+        async def sampler(prompt: str) -> str:
+            response = await ctx.sample(prompt)
+            return response.text or ""
+
+        return sampler
 
     # --- Tool: boring (backpressure — must be called before every other tool) ---
     @mcp.tool()
@@ -46,13 +58,16 @@ def create_server() -> FastMCP:
 
     # --- Tool: store_behavior ---
     @mcp.tool()
-    @guard.guarded
     async def store_behavior(
         sentence: str,
         collection: str,
+        ctx: Context,
         metadata: dict[str, str] | None = None,
     ) -> str:
-        """Store a new behavioral sentence in a collection.
+        """Store a behavioral sentence. Backpressure scales with input structure.
+
+        Highly structured input applies directly; vague input triggers a boring
+        pause. No prior `boring` call is required for this tool.
 
         Args:
             sentence: The behavioral instruction to store.
@@ -61,17 +76,23 @@ def create_server() -> FastMCP:
         """
         from boring_mcp.tools.behaviors import store_behavior as _handler
 
-        return await _handler(sentence, collection, metadata, service=behavior_service)
+        message = await guard.scored_backpressure(sentence, scorer, _make_sampler(ctx))
+        handled = await _handler(
+            sentence, collection, metadata, service=behavior_service
+        )
+        return f"{message}\n{handled}"
 
     # --- Tool: query_behaviors ---
     @mcp.tool()
-    @guard.guarded
     async def query_behaviors(
         query: str,
+        ctx: Context,
         collection: str | None = None,
         top_k: int = 5,
     ) -> str:
-        """Retrieve the most relevant behaviors for a given context.
+        """Retrieve relevant behaviors. Backpressure scales with query structure.
+
+        No prior `boring` call is required for this tool.
 
         Args:
             query: The context to match against.
@@ -80,7 +101,9 @@ def create_server() -> FastMCP:
         """
         from boring_mcp.tools.behaviors import query_behaviors as _handler
 
-        return await _handler(query, collection, top_k, service=behavior_service)
+        message = await guard.scored_backpressure(query, scorer, _make_sampler(ctx))
+        handled = await _handler(query, collection, top_k, service=behavior_service)
+        return f"{message}\n{handled}"
 
     # --- Tool: delete_behavior ---
     @mcp.tool()

@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import Any, ParamSpec, TypeVar
 
 from boring_mcp.logging import get_logger
+from boring_mcp.scoring.scorer import Sampler, StructureScorer
 
 _log = get_logger("backpressure")
 
@@ -50,6 +51,32 @@ class BackpressureGuard:
             "Boring means predictable, reliable, and intentional. "
             "No rushing, no shortcuts."
         )
+
+    async def scored_backpressure(
+        self, text: str, scorer: StructureScorer, sampler: Sampler | None
+    ) -> str:
+        """Score input, sleep by tier, return the tier message.
+
+        Replaces the fixed 30s gate for text-bearing tools: the sleep duration is
+        derived from how structured `text` is. Highly structured input sleeps 0s
+        and is applied directly. The scored sleep itself is the backpressure, so
+        no prior `boring` call is required.
+
+        This path is self-contained: it does NOT touch the admin-gate state
+        (`_last_boring_at` / `_last_tool_at`). A scored call therefore neither
+        requires nor satisfies the `boring` gate that admin tools still enforce.
+        """
+        result = await scorer.score(text, sampler)
+        seconds = scorer.tiers.duration_for(result.score)
+        _log.info(
+            "Scored backpressure: score=%d tier=%s source=%s sleep=%ds",
+            result.score,
+            result.tier,
+            result.source,
+            seconds,
+        )
+        await asyncio.sleep(seconds)
+        return scorer.tiers.message_for(result.score)
 
     def is_allowed(self) -> bool:
         """Check if backpressure was applied since last tool."""

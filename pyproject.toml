@@ -26,6 +26,14 @@ python_version = "3.11"
 packages = ["boring_mcp"]
 mypy_path = "src"
 
+# numpy (pulled in transitively via chromadb) ships PEP 695 `type` statements in
+# its stubs, which mypy refuses to parse under python_version 3.11. We don't
+# type-check numpy internals, so skip following it.
+[[tool.mypy.overrides]]
+module = ["numpy", "numpy.*"]
+follow_imports = "skip"
+follow_imports_for_stubs = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=boring_mcp --cov-report=term-missing"

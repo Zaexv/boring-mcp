@@ -1,0 +1,48 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__boring-mcp__boring",
+      "mcp__boring-mcp__store_behavior",
+      "mcp__boring-mcp__query_behaviors",
+      "mcp__boring-mcp__list_collections",
+      "mcp__boring-mcp__delete_behavior",
+      "mcp__boring-mcp__health_check",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(rtk ls *)",
+      "Bash(rtk grep *)",
+      "Bash(rtk find *)",
+      "Bash(rtk git status)",
+      "Bash(rtk git log*)",
+      "Bash(rtk git diff*)",
+      "Bash(rtk git show*)",
+      "Bash(cat *)",
+      "Bash(echo *)",
+      "Bash(pwd)",
+      "Bash(which *)",
+      "Bash(wc *)",
+      "Bash(head *)",
+      "Bash(tail *)",
+      "Bash(sed *)",
+      "Bash(awk *)",
+      "Bash(sort *)",
+      "Bash(uniq *)",
+      "Bash(tr *)",
+      "Bash(cut *)",
+      "Bash(jq *)",
+      "Bash(python3 *)",
+      "Bash(rtk pytest*)",
+      "Bash(rtk cargo test*)",
+      "Bash(uv run pytest*)",
+      "Bash(uv run mypy*)",
+      "Bash(uv run ruff*)",
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)"
+    ]
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true
+  }
+}
